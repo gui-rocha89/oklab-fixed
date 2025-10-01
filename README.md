@@ -1,54 +1,41 @@
-# Welcome to your Lovable project
+# OKLab - Versão Corrigida 🚀
 
-## Project info
+Este é um repositório separado criado para implementar correções no sistema de anotações de vídeo do OKLab, mantendo o repositório original intocável.
 
-**URL**: https://lovable.dev/projects/817d038c-18c1-4aa7-95dd-26a14d1a02ea
+## 📋 Objetivo
 
-## How can I edit this code?
+Corrigir o problema onde as anotações visuais (desenhos) não aparecem no player de vídeo durante a reprodução, mesmo sendo salvas corretamente no banco de dados.
 
-There are several ways of editing your application.
+## 🔧 Correções Implementadas
 
-**Use Lovable**
+- [ ] **Problema Principal:** Anotações não aparecem no player durante reprodução
+- [ ] **Melhoria:** Otimização da interface de visualização de anotações
+- [ ] **Melhoria:** Melhor sincronização entre tempo do vídeo e exibição das anotações
+- [ ] **Melhoria:** Interface mais intuitiva para navegação entre anotações
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/817d038c-18c1-4aa7-95dd-26a14d1a02ea) and start prompting.
+## 🏗️ Estrutura de Segurança
 
-Changes made via Lovable will be committed automatically to this repo.
+- **Repositório Original:** [gui-rocha89/oklab](https://github.com/gui-rocha89/oklab) - **INTOCÁVEL**
+- **Repositório de Correções:** [gui-rocha89/oklab-fixed](https://github.com/gui-rocha89/oklab-fixed) - **DESENVOLVIMENTO**
 
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
+## 🚀 Como Executar
 
 ```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+# Step 1: Clone o repositório
+git clone https://github.com/gui-rocha89/oklab-fixed.git
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Navegue para o diretório
+cd oklab-fixed
 
-# Step 3: Install the necessary dependencies.
+# Step 3: Instale as dependências
 npm i
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Configure as variáveis de ambiente do Supabase
+# (copie do projeto original)
+
+# Step 5: Execute o servidor de desenvolvimento
 npm run dev
 ```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
 
 ## What technologies are used for this project?
 
