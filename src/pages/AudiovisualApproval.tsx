@@ -15,6 +15,7 @@ import { useVideoAnnotations } from '@/hooks/useVideoAnnotations';
 import { AnnotationCommentModal } from '@/components/AnnotationCommentModal';
 import { CustomVideoPlayer } from '@/components/CustomVideoPlayer';
 import { CommentsSidebar } from '@/components/CommentsSidebar';
+import { AnnotationViewer } from '@/components/AnnotationViewer';
 import { useVideoAspectRatio } from '@/hooks/useVideoAspectRatio';
 import logoWhite from '@/assets/logo-white-bg.png';
 import logoDark from '@/assets/logo-dark-mode.svg';
@@ -71,6 +72,7 @@ export default function AudiovisualApproval() {
   const [pendingAnnotationTimestamp, setPendingAnnotationTimestamp] = useState<number | null>(null);
   const [currentAnnotationId, setCurrentAnnotationId] = useState<string | null>(null);
   const [showAnnotationOverlay, setShowAnnotationOverlay] = useState(false);
+  const [viewingAnnotation, setViewingAnnotation] = useState<any | null>(null);
 
   // Annotation system
   const {
@@ -422,9 +424,17 @@ export default function AudiovisualApproval() {
       const timeInSeconds = annotation.timestamp_ms / 1000;
       seekTo(timeInSeconds);
       setIsPlaying(false);
-      loadAnnotationToCanvas(annotation);
+      
+      // Use the new AnnotationViewer instead of the drawing canvas
+      setViewingAnnotation(annotation);
       setCurrentAnnotationId(annotationId);
-      setShowAnnotationOverlay(true);
+      
+      console.log('🎯 Exibindo anotação:', {
+        id: annotation.id,
+        time: formatTime(timeInSeconds),
+        hasCanvasData: !!annotation.canvas_data?.objects?.length,
+        comment: annotation.comment
+      });
     }
   };
 
@@ -792,21 +802,31 @@ export default function AudiovisualApproval() {
                   />
                   
                   {/* Drawing Canvas Overlay - Positioned absolutely over the video */}
-                  {(isDrawingMode || showAnnotationOverlay) && (
+                  {isDrawingMode && (
                     <div 
                       className="absolute top-0 left-0 w-full h-full pointer-events-none" 
-                      style={{ zIndex: isDrawingMode ? 50 : 5 }}
+                      style={{ zIndex: 50 }}
                     >
-              <VideoAnnotationCanvas
-                videoRef={videoRef}
-                isDrawingMode={isDrawingMode}
-                currentTool={currentTool}
-                brushColor={brushColor}
-                brushWidth={brushWidth}
-                onCanvasReady={setCanvas}
-              />
+                      <VideoAnnotationCanvas
+                        videoRef={videoRef}
+                        isDrawingMode={isDrawingMode}
+                        currentTool={currentTool}
+                        brushColor={brushColor}
+                        brushWidth={brushWidth}
+                        onCanvasReady={setCanvas}
+                      />
                     </div>
                   )}
+                  
+                  {/* Annotation Viewer - Shows saved annotations */}
+                  <AnnotationViewer
+                    annotation={viewingAnnotation}
+                    videoRef={videoRef}
+                    onClose={() => {
+                      setViewingAnnotation(null);
+                      setCurrentAnnotationId(null);
+                    }}
+                  />
                 </div>
               </div>
               
@@ -1041,12 +1061,7 @@ export default function AudiovisualApproval() {
                   currentTime={currentTime}
                   onSeekToTime={seekTo}
                   onLoadAnnotation={(annotationId) => {
-                    const annotation = annotations.find(a => a.id === annotationId);
-                    if (annotation) {
-                      loadAnnotationToCanvas(annotation);
-                      setCurrentAnnotationId(annotationId);
-                      setShowAnnotationOverlay(true);
-                    }
+                    handleAnnotationClick(annotationId);
                   }}
                   formatTime={formatTime}
                 />
