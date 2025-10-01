@@ -11,9 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { VideoAnnotationCanvas } from '@/components/VideoAnnotationCanvas';
 import { DrawingToolbar } from '@/components/DrawingToolbar';
-import { useVideoAnnotations } from '@/hooks/useVideoAnnotations';
-import { AnnotationCommentModal } from '@/components/AnnotationCommentModal';
-import { CustomVideoPlayer } from '@/components/CustomVideoPlayer';
+import { FrameIOStylePlayer } from "@/components/FrameIOStylePlayer";
 import { CommentsSidebar } from '@/components/CommentsSidebar';
 import { AnnotationViewer } from '@/components/AnnotationViewer';
 import { useVideoAspectRatio } from '@/hooks/useVideoAspectRatio';
@@ -762,144 +760,41 @@ export default function AudiovisualApproval() {
         <div className={`grid grid-cols-1 ${isMobile ? 'gap-4' : 'lg:grid-cols-5 gap-6'}`}>
           {/* Coluna Esquerda: Vídeo (60% - 3/5 columns) */}
           <div className={`flex flex-col ${isMobile ? 'space-y-4' : 'lg:col-span-3 space-y-0'}`}>
-            {/* Card do Player de Vídeo */}
-            <Card className={`bg-card border-primary/20 shadow-xl ${isMobile ? 'p-3' : 'p-6'}`}>
-              {/* Container adaptativo que respeita a proporção do vídeo */}
-              <div 
-                className="relative bg-black rounded-lg overflow-hidden flex items-center justify-center"
-                style={{ 
-                  aspectRatio: aspectRatio.toString(),
-                  maxHeight: isMobile ? '60vh' : '70vh'
-                }}
-              >
-                {/* Hidden video element for syncing with canvas */}
-                <video
-                  ref={videoRef}
-                  className="hidden"
-                  src={project.video_url}
-                  onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
-                  onLoadedMetadata={(e) => setDuration(e.currentTarget.duration)}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                />
-                
-                <div className="relative w-full h-full">
-                  <CustomVideoPlayer
-                    src={project.video_url}
-                    currentTime={currentTime}
-                    onTimeUpdate={setCurrentTime}
-                    onDurationChange={setDuration}
-                    annotations={annotations}
-                    onSeek={(time) => {
-                      if (videoRef.current) {
-                        videoRef.current.currentTime = time;
-                      }
-                    }}
-                    isPlaying={isPlaying}
-                    onPlayPauseChange={setIsPlaying}
-                    isDrawingMode={isDrawingMode}
-                    onAnnotationClick={handleAnnotationClick}
-                  />
-                  
-                  {/* Drawing Canvas Overlay - Positioned absolutely over the video */}
-                  {isDrawingMode && (
-                    <div 
-                      className="absolute top-0 left-0 w-full h-full pointer-events-none" 
-                      style={{ zIndex: 50 }}
-                    >
-                      <VideoAnnotationCanvas
-                        videoRef={videoRef}
-                        isDrawingMode={isDrawingMode}
-                        currentTool={currentTool}
-                        brushColor={brushColor}
-                        brushWidth={brushWidth}
-                        onCanvasReady={setCanvas}
-                      />
-                    </div>
-                  )}
-                  
-                  {/* Annotation Viewer - Shows saved annotations */}
-                  <AnnotationViewer
-                    annotation={viewingAnnotation}
-                    videoRef={videoRef}
-                    onClose={() => {
-                      setViewingAnnotation(null);
-                      setCurrentAnnotationId(null);
-                    }}
-                  />
-                </div>
-              </div>
-              
-              {/* Drawing Toolbar - Below Video */}
-              {isDrawingMode && (
-                <div className="mt-2">
-                  <DrawingToolbar
-                    currentTool={currentTool}
-                    onToolChange={setCurrentTool}
-                    brushColor={brushColor}
-                    onColorChange={setBrushColor}
-                    brushWidth={brushWidth}
-                    onBrushWidthChange={setBrushWidth}
-                    onUndo={undo}
-                    onRedo={redo}
-                    onClear={clearCanvas}
-                    onSave={handleSaveAnnotation}
-                    canUndo={canUndo}
-                    canRedo={canRedo}
-                  />
-                </div>
-              )}
+            {/* Frame.io Style Video Player */}
+            <FrameIOStylePlayer
+              videoUrl={project.video_url}
+              annotations={annotations}
+              isClientView={true}
+              onAddAnnotation={async (annotation) => {
+                try {
+                  const { data, error } = await supabase
+                    .from('video_annotations')
+                    .insert([{
+                      project_id: project.id,
+                      timestamp_ms: annotation.timestamp_ms,
+                      comment: annotation.comment,
+                      canvas_data: annotation.canvas_data,
+                      client_name: annotation.client_name,
+                      client_email: annotation.client_email,
+                    }])
+                    .select()
+                    .single();
 
-              {/* Annotation Comment Modal */}
-              <AnnotationCommentModal
-                isOpen={showCommentModal}
-                onClose={() => setShowCommentModal(false)}
-                onSave={handleSaveAnnotationWithComment}
-                timestamp={pendingAnnotationTime}
-              />
-              
-              {/* Drawing and Comment Controls */}
-              <div className={`mt-4 flex ${isMobile ? 'flex-col gap-3' : 'items-center space-x-4'}`}>
-                <Button
-                  onClick={() => {
-                    const newMode = !isDrawingMode;
-                    
-                    if (newMode) {
-                      // CRITICAL: Force BOTH videos to pause before drawing mode
-                      setIsPlaying(false);
-                      if (videoRef.current) {
-                        videoRef.current.pause();
-                      }
-                    }
-                    
-                    // Set drawing mode immediately (no setTimeout)
-                    setIsDrawingMode(newMode);
-                    
-                    if (newMode) {
-                      toast({
-                        title: "Modo Desenho Ativado",
-                        description: "Vídeo pausado. Desenhe suas anotações e clique em Salvar.",
-                      });
-                    }
-                  }}
-                  variant={isDrawingMode ? "default" : "outline"}
-                  size={isMobile ? "default" : "sm"}
-                  className={isMobile ? "touch-manipulation min-h-[44px] px-6 flex-1" : ""}
-                >
-                  <Pencil className="w-4 h-4 mr-2" />
-                  {isDrawingMode ? 'Desativar Desenho' : 'Modo Desenho'}
-                </Button>
-                
-                <Button
-                  onClick={handleAddKeyframe}
-                  className={`bg-primary hover:bg-primary/90 touch-manipulation ${isMobile ? 'w-full min-h-[44px]' : ''}`}
-                  size={isMobile ? "default" : "sm"}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Comentário
-                </Button>
-              </div>
-            </Card>
+                  if (error) throw error;
+
+                  setAnnotations(prev => [...prev, data]);
+                  toast.success('Comentário adicionado com sucesso!');
+                } catch (error) {
+                  console.error('Erro ao salvar anotação:', error);
+                  toast.error('Erro ao salvar comentário');
+                }
+              }}
+              clientName={project.client}
+              clientEmail={project.client_email}
+            />
+
+
+          </div>
 
             {/* Keyframes Editing Section - Below Video */}
             {keyframes.length > 0 && (

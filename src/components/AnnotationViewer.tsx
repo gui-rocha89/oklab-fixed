@@ -58,6 +58,8 @@ export const AnnotationViewer: React.FC<AnnotationViewerProps> = ({
           canvasContainer.style.top = `${offsetTop}px`;
           canvasContainer.style.width = `${videoRect.width}px`;
           canvasContainer.style.height = `${videoRect.height}px`;
+          canvasContainer.style.position = 'absolute';
+          canvasContainer.style.zIndex = '200';
         }
       }
     };
@@ -136,20 +138,35 @@ export const AnnotationViewer: React.FC<AnnotationViewerProps> = ({
           reference: `${REFERENCE_WIDTH}x${REFERENCE_HEIGHT}`,
           current: `${dimensions.width}x${dimensions.height}`,
           objectCount: convertedObjects.length,
+          canvasData: annotation.canvas_data,
+          originalObjects: annotation.canvas_data.objects,
+          convertedObjects: convertedObjects,
         });
 
         // Enliven objects and add to canvas
         const objects = await util.enlivenObjects(convertedObjects);
 
-        objects.forEach((obj: any) => {
+        objects.forEach((obj: any, index: number) => {
           if (obj) {
-            // Style the annotation objects for visibility
+            console.log(`🎨 Adicionando objeto ${index}:`, {
+              type: obj.type,
+              left: obj.left,
+              top: obj.top,
+              width: obj.width,
+              height: obj.height,
+              originalStroke: obj.stroke,
+              originalFill: obj.fill,
+            });
+
+            // Style the annotation objects for maximum visibility
             obj.set({
               selectable: false,
               evented: false,
-              stroke: '#ef4444', // Red color for visibility
-              strokeWidth: 3,
-              fill: obj.type === 'path' ? undefined : 'rgba(239, 68, 68, 0.2)', // Semi-transparent red
+              stroke: '#ff0000', // Bright red for visibility
+              strokeWidth: 4,
+              fill: obj.type === 'path' ? undefined : 'rgba(255, 0, 0, 0.3)', // Semi-transparent red
+              opacity: 1,
+              visible: true,
             });
             
             obj.setCoords();
@@ -167,7 +184,17 @@ export const AnnotationViewer: React.FC<AnnotationViewerProps> = ({
     loadAnnotation();
   }, [annotation, dimensions]);
 
-  if (!annotation) return null;
+  if (!annotation) {
+    return null;
+  }
+
+  console.log('🔍 AnnotationViewer renderizando:', {
+    hasAnnotation: !!annotation,
+    annotationId: annotation?.id,
+    hasCanvasData: !!annotation?.canvas_data,
+    objectCount: annotation?.canvas_data?.objects?.length || 0,
+    dimensions: dimensions,
+  });
 
   const formatTime = (ms: number): string => {
     const totalSeconds = Math.floor(ms / 1000);
@@ -179,16 +206,28 @@ export const AnnotationViewer: React.FC<AnnotationViewerProps> = ({
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 pointer-events-none z-20"
+      className="absolute inset-0 pointer-events-none"
+      style={{ zIndex: 100 }}
     >
       {/* Canvas positioned exactly over video */}
-      <div className="absolute pointer-events-none">
+      <div 
+        className="absolute top-0 left-0 pointer-events-none"
+        style={{
+          width: dimensions.width,
+          height: dimensions.height,
+        }}
+      >
         <canvas
           ref={canvasRef}
           className="block"
           style={{
             width: dimensions.width,
             height: dimensions.height,
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            border: '2px solid red', // Debug border
+            backgroundColor: 'rgba(255, 0, 0, 0.1)', // Debug background
           }}
         />
       </div>

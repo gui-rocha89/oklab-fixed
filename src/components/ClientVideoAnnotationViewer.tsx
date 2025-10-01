@@ -109,13 +109,22 @@ export const ClientVideoAnnotationViewer = ({ videoUrl, annotations }: ClientVid
       return currDiff < prevDiff ? { annotation: curr, index } : prev;
     }, { annotation: annotations[0], index: 0 });
 
-    // Se estiver muito próximo (dentro de 2 segundos), mostrar a anotação
-    if (Math.abs(closest.annotation.timestamp_ms - currentTime) < 2000) {
+    console.log('🕐 Verificando anotações:', {
+      currentTime: currentTime,
+      closestTime: closest.annotation.timestamp_ms,
+      difference: Math.abs(closest.annotation.timestamp_ms - currentTime),
+      threshold: 5000, // 5 segundos
+    });
+
+    // Aumentar o threshold para 5 segundos para melhor detecção
+    if (Math.abs(closest.annotation.timestamp_ms - currentTime) < 5000) {
       if (currentAnnotationIndex !== closest.index) {
+        console.log('🎯 Carregando anotação:', closest.index);
         setCurrentAnnotationIndex(closest.index);
         loadAnnotationToCanvas(closest.annotation);
       }
     } else if (currentAnnotationIndex !== null) {
+      console.log('🧹 Limpando canvas - fora do threshold');
       setCurrentAnnotationIndex(null);
       clearCanvas();
     }
@@ -152,11 +161,16 @@ export const ClientVideoAnnotationViewer = ({ videoUrl, annotations }: ClientVid
       );
 
       console.log('🎯 Carregando anotação:', {
+        annotationId: annotation.id,
+        timestamp: annotation.timestamp_ms,
         reference: `${REFERENCE_WIDTH}x${REFERENCE_HEIGHT}`,
         currentPlayer: `${currentWidth}x${currentHeight}`,
         scaleX: (currentWidth / REFERENCE_WIDTH).toFixed(3),
         scaleY: (currentHeight / REFERENCE_HEIGHT).toFixed(3),
-        objectCount: convertedObjects.length
+        objectCount: convertedObjects.length,
+        hasCanvasData: !!annotation.canvas_data,
+        originalObjects: annotation.canvas_data?.objects?.length || 0,
+        canvasRect: video.getBoundingClientRect(),
       });
 
       const objects = await util.enlivenObjects(convertedObjects);
@@ -168,9 +182,11 @@ export const ClientVideoAnnotationViewer = ({ videoUrl, annotations }: ClientVid
           obj.set({
             selectable: false,
             evented: false,
-            stroke: '#FF0000',
-            strokeWidth: 5,
-            fill: obj.type === 'path' ? undefined : (obj.fill || 'rgba(255, 0, 0, 0.3)')
+            stroke: '#00FF00', // Verde brilhante para debug
+            strokeWidth: 6,
+            fill: obj.type === 'path' ? undefined : 'rgba(0, 255, 0, 0.4)', // Verde semi-transparente
+            opacity: 1,
+            visible: true,
           });
           obj.setCoords();
           canvas.add(obj);
@@ -234,17 +250,31 @@ export const ClientVideoAnnotationViewer = ({ videoUrl, annotations }: ClientVid
     seekToAnnotation(annotations[prevIndex], prevIndex);
   };
 
-  const skipToNextAnnotation = () => {
+    const skipToNextAnnotation = () => {
     if (currentAnnotationIndex === null || currentAnnotationIndex >= annotations.length - 1) return;
-    const nextIndex = currentAnnotationIndex + 1;
-    seekToAnnotation(annotations[nextIndex], nextIndex);
+    
+    const nextAnnotation = annotations[currentAnnotationIndex + 1];
+    if (videoRef.current) {
+      videoRef.current.currentTime = nextAnnotation.timestamp_ms / 1000;
+    }
+  };
+
+  const jumpToAnnotation = (annotation: VideoAnnotation, index: number) => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = annotation.timestamp_ms / 1000;
+      setCurrentAnnotationIndex(index);
+      loadAnnotationToCanvas(annotation);
+      console.log('🎯 Saltando para anotação:', {
+        index,
+        timestamp: annotation.timestamp_ms,
+        time: annotation.timestamp_ms / 1000,
+      });
+    }
   };
 
   const toggleFullscreen = () => {
-    if (!containerRef.current) return;
-
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen();
+      containerRef.current?.requestFullscreen();
       setIsFullscreen(true);
     } else {
       document.exitFullscreen();
@@ -288,8 +318,14 @@ export const ClientVideoAnnotationViewer = ({ videoUrl, annotations }: ClientVid
             {/* Canvas para anotações - posicionado exatamente sobre o vídeo */}
             <canvas
               ref={canvasRef}
-              className="absolute pointer-events-none"
-              style={{ zIndex: 30 }}
+              className="absolute top-0 left-0 pointer-events-none"
+              style={{ 
+                zIndex: 30,
+                width: '100%',
+                height: '100%',
+                border: '2px solid lime', // Debug border
+                backgroundColor: 'rgba(0, 255, 0, 0.1)', // Debug background
+              }}
             />
 
             {/* Overlay para controles - aparece no hover */}
@@ -332,7 +368,7 @@ export const ClientVideoAnnotationViewer = ({ videoUrl, annotations }: ClientVid
                           : "bg-warning hover:bg-warning/80"
                       )}
                       style={{ left: `${(annotation.timestamp_ms / duration) * 100}%` }}
-                      onClick={() => seekToAnnotation(annotation, index)}
+                      onClick={() => jumpToAnnotation(annotation, index)}
                       title={`${index + 1}. ${formatTimestamp(annotation.timestamp_ms)}`}
                     />
                   ))}
@@ -420,7 +456,7 @@ export const ClientVideoAnnotationViewer = ({ videoUrl, annotations }: ClientVid
                 return (
                   <button
                     key={annotation.id}
-                    onClick={() => seekToAnnotation(annotation, index)}
+                    onClick={() => jumpToAnnotation(annotation, index)}
                     className={cn(
                       "w-full text-left p-3 rounded-lg border transition-all",
                       "hover:shadow-md hover:scale-[1.02]",

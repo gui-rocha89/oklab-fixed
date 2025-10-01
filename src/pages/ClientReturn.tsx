@@ -10,7 +10,7 @@ import { ArrowLeft, CheckCircle2, Clock, Star, MessageSquare, Video, User, Mail,
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { ClientVideoAnnotationViewer } from "@/components/ClientVideoAnnotationViewer";
+import { FrameIOStylePlayer } from "@/components/FrameIOStylePlayer";
 
 interface Project {
   id: string;
@@ -85,6 +85,18 @@ const ClientReturn = () => {
         .select("*")
         .eq("project_id", projectId)
         .order("timestamp_ms", { ascending: true });
+
+      console.log('🔍 Anotações carregadas do banco:', {
+        projectId,
+        count: annotationsData?.length || 0,
+        annotations: annotationsData?.map(ann => ({
+          id: ann.id,
+          timestamp: ann.timestamp_ms,
+          hasCanvasData: !!ann.canvas_data,
+          objectCount: ann.canvas_data?.objects?.length || 0,
+          comment: ann.comment,
+        })) || []
+      });
 
       setAnnotations(annotationsData || []);
     } catch (error: any) {
@@ -312,15 +324,56 @@ const ClientReturn = () => {
         )}
 
         {/* Vídeo Aprovado pelo Cliente com Anotações */}
-        {project.video_url && annotations.length > 0 && (
-          <ClientVideoAnnotationViewer 
-            videoUrl={project.video_url}
-            annotations={annotations}
-          />
+        {project.video_url && (
+          <>
+            {console.log('🎬 Renderizando ClientVideoAnnotationViewer:', {
+              videoUrl: project.video_url,
+              annotationsCount: annotations.length,
+              firstAnnotation: annotations[0],
+              hasAnnotations: annotations.length > 0,
+            })}
+            <FrameIOStylePlayer 
+              videoUrl={project.video_url}
+              annotations={annotations}
+              isClientView={false}
+            />
+          </>
         )}
 
-        {/* Vídeo sem anotações + Avaliação do Cliente - Layout lado a lado */}
-        {project.video_url && annotations.length === 0 && (
+        {/* Debug: Informações das Anotações */}
+        {annotations.length > 0 && (
+          <Card className="border-blue-500 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="text-blue-700">🔍 Debug: Anotações Encontradas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2 text-sm">
+                <p><strong>Total de anotações:</strong> {annotations.length}</p>
+                {annotations.map((ann, index) => (
+                  <div key={ann.id} className="p-2 bg-white rounded border">
+                    <p><strong>Anotação {index + 1}:</strong></p>
+                    <p>• ID: {ann.id}</p>
+                    <p>• Tempo: {ann.timestamp_ms}ms</p>
+                    <p>• Comentário: {ann.comment || 'Sem comentário'}</p>
+                    <p>• Canvas Data: {ann.canvas_data ? 'Presente' : 'Ausente'}</p>
+                    <p>• Objetos: {ann.canvas_data?.objects?.length || 0}</p>
+                    {ann.canvas_data?.objects && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-blue-600">Ver dados do canvas</summary>
+                        <pre className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto">
+                          {JSON.stringify(ann.canvas_data, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Avaliação do Cliente - Sempre mostrar se houver review */}
+        {false && project.video_url && annotations.length === 0 && (
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             {/* Vídeo sem anotações - Coluna Esquerda (60%) */}
             <div className="lg:col-span-3">
